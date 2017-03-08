@@ -90,7 +90,10 @@ class Repo(object):
     # Subclasses may easily bring in their own custom types by placing a constructor or type here
     GitCommandWrapperType = Git
 
-    def __init__(self, path=None, odbt=DefaultDBType, search_parent_directories=False):
+    def __init__(
+            self, path=None, odbt=DefaultDBType,
+            search_parent_directories=False,
+            gc_on_close=True):
         """Create a new Repo instance
 
         :param path:
@@ -113,9 +116,15 @@ class Repo(object):
 
             Please note that this was the default behaviour in older versions of GitPython,
             which is considered a bug though.
+        :param gc_on_close:
+            Whether to force gc collect and mmap collect on Repo destruction.
+            In some high-volume cases, the cost of doing frequent full gc cycles
+            is extremely expensive. While doing the gc is the safe bet, skipping
+            it can be useful in specific cases. Defaults to True.
         :raise InvalidGitRepositoryError:
         :raise NoSuchPathError:
         :return: git.Repo """
+        self._gc_on_close = gc_on_close
         epath = path or os.getenv('GIT_DIR')
         if not epath:
             epath = os.getcwd()
@@ -191,9 +200,10 @@ class Repo(object):
     def close(self):
         if self.git:
             self.git.clear_cache()
-            gc.collect()
-            gitdb.util.mman.collect()
-            gc.collect()
+            if self._gc_on_close:
+                gc.collect()
+                gitdb.util.mman.collect()
+                gc.collect()
 
     def __eq__(self, rhs):
         if isinstance(rhs, Repo):

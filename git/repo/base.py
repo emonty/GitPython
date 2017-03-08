@@ -199,9 +199,10 @@ class Repo(object):
 
     def close(self):
         if self.git:
-            self.git.clear_cache()
             if self._gc_on_close:
                 gc.collect()
+            self.git.clear_cache()
+            if self._gc_on_close:
                 gitdb.util.mman.collect()
                 gc.collect()
 
